@@ -1,0 +1,120 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #343a40;
+    margin-top: 20px;
+}
+
+.container {
+    max-width: 900px;
+}
+
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.chat-box {
+    height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 15px;
+    background-color: #e9ecef;
+}
+
+.message-bubble {
+    padding: 8px 12px;
+    border-radius: 15px;
+    margin-bottom: 10px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.user-message {
+    background-color: #007bff;
+    color: white;
+    margin-left: auto; /* Aligns to right */
+    text-align: right;
+}
+
+.ai-message {
+    background-color: #6c757d;
+    color: white;
+    margin-right: auto; /* Aligns to left */
+    text-align: left;
+}
+
+.plot-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 10px;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.075);
+}
+
+.form-group label {
+    font-weight: bold;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+    vertical-align: middle;
+}
+
+/* Styles for markdown rendering */
+pre {
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    border-left: 3px solid #f36d33;
+    color: #666;
+    page-break-inside: avoid;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 1.6em;
+    max-width: 100%;
+    overflow: auto;
+    padding: 1em 1.5em;
+    display: block;
+    word-wrap: break-word;
+}
+code {
+    font-family: monospace;
+    background-color: rgba(27,31,35,.05);
+    padding: .2em .4em;
+    border-radius: 3px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    background-color: #fff; /* Ensure table background is white */
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+/* Hide the custom plot section initially */
+#customPlotSection {
+    display: none;
+}

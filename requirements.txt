@@ -1,0 +1,13 @@
+pandas
+openpyxl
+python-docx
+PyPDF2
+Pillow
+pytesseract
+matplotlib
+seaborn
+requests
+python-dotenv
+tabulate
+Flask
+pyarrow

@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analyst Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Add some styling for the plot area */
+        .plot-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px; /* Space between plots */
+            justify-content: center; /* Center plots horizontally */
+        }
+        .plot-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 100%; /* Ensure it fits in parent container */
+            text-align: center;
+        }
+        .plot-item img {
+            max-width: 100%;
+            height: auto;
+            display: block; /* Remove extra space below image */
+            margin-bottom: 10px;
+        }
+        .plot-item p {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 0;
+        }
+        .chat-box {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .message-bubble {
+            padding: 10px 15px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #0d6efd;
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .ai-message {
+            background-color: #e2e6ea;
+            color: #212529;
+            align-self: flex-start;
+            margin-right: auto;
+        }
+        /* Style for cleaning section */
+        .cleaning-section .card-body {
+            padding: 15px;
+        }
+        .cleaning-form-group {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .cleaning-form-group:last-child {
+            border-bottom: none;
+        }
+        .small-status-text {
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <h1 class="text-center mb-4 text-primary">Data Analyst Agent</h1>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                Upload Document
+            </div>
+            <div class="card-body">
+                <form id="uploadForm">
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">Choose File (.doc, .txt, .xlsx, .csv, .pdf, image)</label>
+                        <input class="form-control" type="file" id="fileInput" name="file">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="uploadButton">
+                        Upload
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="uploadSpinner"></span>
+                    </button>
+                    <p id="uploadStatus" class="mt-2"></p>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                Chat with Agent
+            </div>
+            <div class="card-body">
+                <div class="chat-box mb-3" id="chatBox">
+                    <div class="message-bubble ai-message">
+                        Hello! Please upload a document to get started.
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Ask your question..." id="userMessageInput">
+                    <button class="btn btn-primary" type="button" id="sendMessageButton">
+                        Send
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="chatSpinner"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4" id="generatedPlotsSection" style="display: none;">
+            <div class="card-header bg-success text-white">
+                Generated Plots
+            </div>
+            <div class="card-body plot-container" id="plotsContainer">
+                <p id="noPlotsMessage" class="text-muted">No plots generated yet.</p>
+            </div>
+        </div>
+
+        <div class="card mb-4" id="customPlotSection" style="display: none;">
+            <div class="card-header bg-info text-white">
+                Generate Custom Plot (for Structured Data)
+            </div>
+            <div class="card-body">
+                <form id="customPlotForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="plotTypeSelect" class="form-label">Plot Type</label>
+                            <select class="form-select" id="plotTypeSelect">
+                                <option value="">Select Plot Type</option>
+                                <option value="bar">Bar Chart</option>
+                                <option value="line">Line Chart</option>
+                                <option value="scatter">Scatter Plot</option>
+                                <option value="hist">Histogram</option>
+                                <option value="box">Box Plot</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="plotTitleInput" class="form-label">Plot Title (Optional)</label>
+                            <input type="text" class="form-control" id="plotTitleInput" placeholder="Enter plot title">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="xColSelect" class="form-label">X-axis Column</label>
+                            <select class="form-select" id="xColSelect">
+                                <option value="">Select X Column (Optional for some plots)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="yColSelect" class="form-label">Y-axis Column</label>
+                            <select class="form-select" id="yColSelect">
+                                <option value="">Select Y Column (Optional for some plots)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="hueColSelect" class="form-label">Group By (Hue)</label>
+                            <select class="form-select" id="hueColSelect">
+                                <option value="">Select Hue Column (Optional)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-info" id="generatePlotButton">
+                        Generate Plot
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="plotSpinner"></span>
+                    </button>
+                    <p id="plotStatus" class="mt-2"></p>
+                </form>
+            </div>
+        </div>
+
+
+        <div class="card mb-4" id="dataCleaningSection" style="display: none;">
+            <div class="card-header bg-warning text-dark">
+                Data Cleaning & Preprocessing
+            </div>
+            <div class="card-body cleaning-section">
+                <p class="text-muted mb-3" id="dataframeShapeInfo">No DataFrame loaded.</p>
+
+               
+
+                <div class="cleaning-form-group">
+                    <h5>Missing Values</h5>
+                    <form id="missingValuesForm">
+                        <div class="row mb-2">
+                            <div class="col-md-5">
+                                <label for="mvColumnSelect" class="form-label small">Column</label>
+                                <select class="form-select" id="mvColumnSelect">
+                                    <option value="">Select Column</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="mvMethodSelect" class="form-label small">Method</label>
+                                <select class="form-select" id="mvMethodSelect">
+                                    <option value="">Select Method</option>
+                                    <option value="drop_row">Drop Rows</option>
+                                    <option value="drop_column">Drop Column</option>
+                                    <option value="mean">Fill with Mean (Numeric)</option>
+                                    <option value="median">Fill with Median (Numeric)</option>
+                                    <option value="mode">Fill with Mode</option>
+                                    <option value="fill_value">Fill with Specific Value</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="mvValueInput" class="form-label small">Fill Value (if applicable)</label>
+                                <input type="text" class="form-control" id="mvValueInput" placeholder="Value">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm" id="mvApplyButton">
+                            Apply
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="mvSpinner"></span>
+                        </button>
+                        <p id="mvStatus" class="small-status-text"></p>
+                    </form>
+                </div>
+
+                <div class="cleaning-form-group">
+                    <h5>Data Type Conversion</h5>
+                    <form id="dataTypeConversionForm">
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                <label for="dtColumnSelect" class="form-label small">Column</label>
+                                <select class="form-select" id="dtColumnSelect">
+                                    <option value="">Select Column</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="dtTargetTypeSelect" class="form-label small">Target Type</label>
+                                <select class="form-select" id="dtTargetTypeSelect">
+                                    <option value="">Select Type</option>
+                                    <option value="numeric">Numeric (float)</option>
+                                    <option value="int">Integer</option>
+                                    <option value="datetime">Datetime</option>
+                                    <option value="string">String</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm" id="dtApplyButton">
+                            Convert
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="dtSpinner"></span>
+                        </button>
+                        <p id="dtStatus" class="small-status-text"></p>
+                    </form>
+                </div>
+
+                <div class="cleaning-form-group">
+                    <h5>Duplicate Rows</h5>
+                    <form id="duplicatesForm">
+                        <div class="row mb-2">
+                            <div class="col-md-8">
+                                <label for="dupSubsetSelect" class="form-label small">Subset Columns (Optional, Ctrl+Click to select multiple)</label>
+                                <select class="form-select" id="dupSubsetSelect" multiple size="3">
+                                    </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="dupKeepSelect" class="form-label small">Keep</label>
+                                <select class="form-select" id="dupKeepSelect">
+                                    <option value="first">First Occurrence</option>
+                                    <option value="last">Last Occurrence</option>
+                                    <option value="false">Drop All Duplicates</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm" id="dupApplyButton">
+                            Remove Duplicates
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="dupSpinner"></span>
+                        </button>
+                        <p id="dupStatus" class="small-status-text"></p>
+                    </form>
+                </div>
+
+                <div class="cleaning-form-group">
+                    <h5>Outlier Handling (IQR)</h5>
+                    <form id="outlierForm">
+                        <div class="row mb-2">
+                            <div class="col-md-5">
+                                <label for="outlierColumnSelect" class="form-label small">Numeric Column</label>
+                                <select class="form-select" id="outlierColumnSelect">
+                                    <option value="">Select Column</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="outlierMethodSelect" class="form-label small">Method</label>
+                                <select class="form-select" id="outlierMethodSelect">
+                                    <option value="">Select Method</option>
+                                    <option value="remove">Remove Rows</option>
+                                    <option value="cap">Cap Values</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="outlierCapRangeInput" class="form-label small">IQR Multiplier (default 1.5)</label>
+                                <input type="number" step="0.1" class="form-control" id="outlierCapRangeInput" value="1.5" placeholder="1.5">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm" id="outlierApplyButton">
+                            Handle Outliers
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="outlierSpinner"></span>
+                        </button>
+                        <p id="outlierStatus" class="small-status-text"></p>
+                    </form>
+                </div>
+                 <div class="mb-3">
+                    <button type="button" class="btn btn-primary" id="downloadDataButton">
+                        Download Processed Data (CSV)
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="downloadSpinner"></span>
+                    </button>
+                    <p id="downloadStatus" class="small-status-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fRVZgRtfkHwLhRj7kE4K+JqI5A+G6NfHqM4g1oDABXF9/g" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const userMessageInput = document.getElementById('userMessageInput');
+        const sendMessageButton = document.getElementById('sendMessageButton');
+        const uploadForm = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadSpinner = document.getElementById('uploadSpinner');
+        const chatSpinner = document.getElementById('chatSpinner');
+
+        // Custom Plot Elements
+        const customPlotSection = document.getElementById('customPlotSection');
+        const customPlotForm = document.getElementById('customPlotForm');
+        const plotTypeSelect = document.getElementById('plotTypeSelect');
+        const plotTitleInput = document.getElementById('plotTitleInput');
+        const xColSelect = document.getElementById('xColSelect');
+        const yColSelect = document.getElementById('yColSelect');
+        const hueColSelect = document.getElementById('hueColSelect');
+        const generatePlotButton = document.getElementById('generatePlotButton');
+        const plotSpinner = document.getElementById('plotSpinner');
+        const plotStatus = document.getElementById('plotStatus');
+
+        // New Plot Display Elements
+        const generatedPlotsSection = document.getElementById('generatedPlotsSection');
+        const plotsContainer = document.getElementById('plotsContainer');
+        let noPlotsMessage = document.getElementById('noPlotsMessage');
+
+        // Data Cleaning Elements
+        const dataCleaningSection = document.getElementById('dataCleaningSection');
+        const dataframeShapeInfo = document.getElementById('dataframeShapeInfo');
+
+        // Missing Values
+        const missingValuesForm = document.getElementById('missingValuesForm');
+        const mvColumnSelect = document.getElementById('mvColumnSelect');
+        const mvMethodSelect = document.getElementById('mvMethodSelect');
+        const mvValueInput = document.getElementById('mvValueInput');
+        const mvApplyButton = document.getElementById('mvApplyButton');
+        const mvSpinner = document.getElementById('mvSpinner');
+        const mvStatus = document.getElementById('mvStatus');
+
+        // Data Type Conversion
+        const dataTypeConversionForm = document.getElementById('dataTypeConversionForm');
+        const dtColumnSelect = document.getElementById('dtColumnSelect');
+        const dtTargetTypeSelect = document.getElementById('dtTargetTypeSelect');
+        const dtApplyButton = document.getElementById('dtApplyButton');
+        const dtSpinner = document.getElementById('dtSpinner');
+        const dtStatus = document.getElementById('dtStatus');
+
+        // Duplicate Handling
+        const duplicatesForm = document.getElementById('duplicatesForm');
+        const dupSubsetSelect = document.getElementById('dupSubsetSelect');
+        const dupKeepSelect = document.getElementById('dupKeepSelect');
+        const dupApplyButton = document.getElementById('dupApplyButton');
+        const dupSpinner = document.getElementById('dupSpinner');
+        const dupStatus = document.getElementById('dupStatus');
+
+        // Outlier Handling
+        const outlierForm = document.getElementById('outlierForm');
+        const outlierColumnSelect = document.getElementById('outlierColumnSelect');
+        const outlierMethodSelect = document.getElementById('outlierMethodSelect');
+        const outlierCapRangeInput = document.getElementById('outlierCapRangeInput');
+        const outlierApplyButton = document.getElementById('outlierApplyButton');
+        const outlierSpinner = document.getElementById('outlierSpinner');
+        const outlierStatus = document.getElementById('outlierStatus');
+
+        // NEW: Download button elements
+        const downloadDataButton = document.getElementById('downloadDataButton');
+        const downloadSpinner = document.getElementById('downloadSpinner');
+        const downloadStatus = document.getElementById('downloadStatus');
+
+
+        function appendMessage(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-bubble');
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message');
+            } else {
+                messageDiv.classList.add('ai-message');
+            }
+
+            // Use Marked.js to convert Markdown to HTML
+            messageDiv.innerHTML = marked.parse(message);
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; // Scroll to bottom
+        }
+
+        // Function to display plots
+        function displayPlot(plotUrl, title = "Generated Plot") {
+            if (!noPlotsMessage || !document.contains(noPlotsMessage)) {
+                noPlotsMessage = document.getElementById('noPlotsMessage');
+            }
+            if (noPlotsMessage) {
+                noPlotsMessage.style.display = 'none';
+            }
+            generatedPlotsSection.style.display = 'block';
+
+            const plotItem = document.createElement('div');
+            plotItem.classList.add('plot-item');
+
+            const plotImg = document.createElement('img');
+            plotImg.src = plotUrl;
+            plotImg.alt = title;
+
+            const plotTitle = document.createElement('p');
+            plotTitle.textContent = title;
+
+            plotItem.appendChild(plotImg);
+            plotItem.appendChild(plotTitle);
+            plotsContainer.appendChild(plotItem);
+
+            plotsContainer.scrollTop = plotsContainer.scrollHeight;
+        }
+
+
+        // Function to populate column dropdowns for plots
+        function populatePlotColumnSelects(columns) {
+            const selectElements = [xColSelect, yColSelect, hueColSelect];
+            selectElements.forEach(select => {
+                select.innerHTML = ''; // Clear all options
+                let defaultOptionText = "Select Column (Optional)";
+                if (select.id === 'xColSelect') {
+                     defaultOptionText = "Select X Column (Required for most plots)";
+                } else if (select.id === 'yColSelect') {
+                    defaultOptionText = "Select Y Column (Required for some plots)";
+                }
+                const defaultOption = document.createElement('option');
+                defaultOption.value = "";
+                defaultOption.textContent = defaultOptionText;
+                select.appendChild(defaultOption);
+
+                columns.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        // Function to populate column dropdowns for cleaning, including dtypes
+        function populateCleaningColumnSelects(columns_info) {
+            const cleaningSelects = [mvColumnSelect, dtColumnSelect, outlierColumnSelect];
+            const multiSelects = [dupSubsetSelect]; // For multiple selection
+
+            cleaningSelects.forEach(select => {
+                select.innerHTML = '';
+                const defaultOption = document.createElement('option');
+                defaultOption.value = "";
+                defaultOption.textContent = "Select Column";
+                select.appendChild(defaultOption);
+
+                // Add 'all_columns' option for Missing Values
+                if (select.id === 'mvColumnSelect') {
+                    const allColumnsOption = document.createElement('option');
+                    allColumnsOption.value = "all_columns";
+                    allColumnsOption.textContent = "All Columns (for dropping rows)";
+                    select.appendChild(allColumnsOption);
+                }
+
+                columns_info.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col.name;
+                    option.textContent = `${col.name} (${col.dtype})`;
+                    option.dataset.dtype = col.dtype; // Store dtype as data attribute
+                    select.appendChild(option);
+                });
+            });
+
+            multiSelects.forEach(select => {
+                select.innerHTML = '';
+                columns_info.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col.name;
+                    option.textContent = col.name;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        // Function to update DataFrame info and re-populate all column selects
+        async function updateDataFrameInfo() {
+            try {
+                const response = await fetch('/get_columns_info');
+                const data = await response.json();
+
+                if (data.data_type === 'dataframe') {
+                    dataframeShapeInfo.textContent = `Current DataFrame: ${data.rows} rows, ${data.cols} columns.`;
+                    dataCleaningSection.style.display = 'block';
+                    customPlotSection.style.display = 'block';
+                    populatePlotColumnSelects(data.columns_info.map(c => c.name)); // For plot section
+                    populateCleaningColumnSelects(data.columns_info); // For cleaning section
+                } else {
+                    dataframeShapeInfo.textContent = 'No DataFrame loaded.';
+                    dataCleaningSection.style.display = 'none';
+                    customPlotSection.style.display = 'none';
+                    populatePlotColumnSelects([]);
+                    populateCleaningColumnSelects([]);
+                }
+            } catch (error) {
+                console.error('Error fetching columns info:', error);
+                dataframeShapeInfo.textContent = 'Error loading DataFrame info.';
+            }
+        }
+
+
+        // Event listener for file upload form
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) {
+                uploadStatus.textContent = "Please select a file.";
+                uploadStatus.classList.remove('text-success');
+                uploadStatus.classList.add('text-danger');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadButton.disabled = true;
+            uploadSpinner.classList.remove('d-none');
+            uploadStatus.textContent = "Uploading and processing...";
+            uploadStatus.classList.remove('text-danger', 'text-success');
+
+            // Clear chatbox, history, and plots on new upload
+            chatBox.innerHTML = '<div class="message-bubble ai-message">Hello! Please upload a document to get started.</div>';
+            plotsContainer.innerHTML = '<p id="noPlotsMessage" class="text-muted">No plots generated yet.</p>'; // Clear plots
+            noPlotsMessage = document.getElementById('noPlotsMessage'); // Re-get reference after innerHTML change
+            generatedPlotsSection.style.display = 'none'; // Hide plot section initially
+            
+            // Hide and clear cleaning sections initially
+            dataCleaningSection.style.display = 'none';
+            customPlotSection.style.display = 'none';
+            dataframeShapeInfo.textContent = 'No DataFrame loaded.';
+
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                // Log the response to console for debugging
+                console.log("Upload Response Data:", data);
+
+                if (data.success) {
+                    uploadStatus.textContent = `Document Type: ${data.type ? data.type.toUpperCase() : 'UNKNOWN'}. ${data.message}`;
+                    uploadStatus.classList.remove('text-danger');
+                    uploadStatus.classList.add('text-success');
+                    appendMessage('ai', data.overview); // Display LLM overview
+                    fileInput.value = ''; // Clear file input
+
+                    // Show sections and populate columns ONLY if structured data (dataframe)
+                    if (data.type === 'dataframe' && data.columns && data.columns.length > 0) {
+                        updateDataFrameInfo(); // Call new function to update all relevant UIs
+                    } else {
+                        dataCleaningSection.style.display = 'none';
+                        customPlotSection.style.display = 'none';
+                        populatePlotColumnSelects([]);
+                        populateCleaningColumnSelects([]);
+                    }
+
+                } else {
+                    uploadStatus.textContent = `Error: ${data.message}`;
+                    uploadStatus.classList.remove('text-success');
+                    uploadStatus.classList.add('text-danger');
+                    dataCleaningSection.style.display = 'none';
+                    customPlotSection.style.display = 'none';
+                    populatePlotColumnSelects([]);
+                    populateCleaningColumnSelects([]);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                uploadStatus.textContent = "An error occurred during upload. Please try again.";
+                uploadStatus.classList.remove('text-success');
+                uploadStatus.classList.add('text-danger');
+                dataCleaningSection.style.display = 'none';
+                customPlotSection.style.display = 'none';
+                populatePlotColumnSelects([]);
+                populateCleaningColumnSelects([]);
+            } finally {
+                uploadButton.disabled = false;
+                uploadSpinner.classList.add('d-none');
+            }
+        });
+
+        // Event listener for chat message submission
+        sendMessageButton.addEventListener('click', async () => {
+            const userMessage = userMessageInput.value.trim();
+            if (userMessage === '') return;
+
+            appendMessage('user', userMessage);
+            userMessageInput.value = ''; // Clear input
+
+            sendMessageButton.disabled = true;
+            chatSpinner.classList.remove('d-none');
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: userMessage })
+                });
+                const data = await response.json();
+
+                // Check for plot_url and display separately
+                if (data.plot_url) {
+                    displayPlot(data.plot_url, "AI Generated Plot");
+                    appendMessage('ai', data.response + "\n\n*(Plot generated above in 'Generated Plots' section.)*");
+                } else {
+                    appendMessage('ai', data.response);
+                }
+
+                // If data was modified by an action, update UI
+                if (data.data_modified) {
+                    await updateDataFrameInfo();
+                }
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                appendMessage('ai', 'An error occurred while processing your request. Please try again.');
+            } finally {
+                sendMessageButton.disabled = false;
+                chatSpinner.classList.add('d-none');
+            }
+        });
+
+        userMessageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessageButton.click();
+            }
+        });
+
+        // Event listener for custom plot generation
+        customPlotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const plotType = plotTypeSelect.value;
+            const xCol = xColSelect.value || null;
+            const yCol = yColSelect.value || null;
+            const hueCol = hueColSelect.value || null;
+            const title = plotTitleInput.value.trim() || 'Custom Generated Plot';
+
+            if (!plotType) {
+                plotStatus.textContent = "Please select a plot type.";
+                plotStatus.classList.add('text-danger');
+                return;
+            }
+
+            let isValidPlotRequest = true;
+            let validationMessage = "";
+
+            // Client-side validation for plot types and required columns
+            if (plotType === 'line' || plotType === 'scatter') {
+                if (!xCol || !yCol) {
+                    isValidPlotRequest = false;
+                    validationMessage = `For ${plotType} plots, X-axis and Y-axis columns are required.`;
+                }
+            } else if (plotType === 'bar' || plotType === 'hist') {
+                if (!xCol) {
+                    isValidPlotRequest = false;
+                    validationMessage = `For ${plotType} plots, an X-axis column is required.`;
+                }
+            } else if (plotType === 'box') {
+                if (!xCol && !yCol) {
+                    isValidPlotRequest = false;
+                    validationMessage = `For box plots, at least one of X-axis or Y-axis column is required.`;
+                }
+            }
+
+            if (!isValidPlotRequest) {
+                plotStatus.textContent = validationMessage;
+                plotStatus.classList.add('text-danger');
+                return;
+            }
+
+            plotStatus.textContent = "Generating plot...";
+            plotStatus.classList.remove('text-danger', 'text-success');
+            generatePlotButton.disabled = true;
+            plotSpinner.classList.remove('d-none');
+
+            try {
+                const response = await fetch('/generate_custom_plot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plot_type: plotType,
+                        x_col: xCol,
+                        y_col: yCol,
+                        hue_col: hueCol,
+                        title: title
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    plotStatus.textContent = `Plot generated: ${data.message}`;
+                    plotStatus.classList.remove('text-danger');
+                    plotStatus.classList.add('text-success');
+                    displayPlot(data.plot_url, title);
+                } else {
+                    plotStatus.textContent = `Error: ${data.message}`;
+                    plotStatus.classList.remove('text-success');
+                    plotStatus.classList.add('text-danger');
+                    appendMessage('ai', `Failed to generate plot: ${data.message}`);
+                }
+            } catch (error) {
+                console.error('Custom plot generation error:', error);
+                plotStatus.textContent = "An error occurred during plot generation. Please try again.";
+                plotStatus.classList.remove('text-success');
+                plotStatus.classList.add('text-danger');
+            } finally {
+                generatePlotButton.disabled = false;
+                plotSpinner.classList.add('d-none');
+            }
+        });
+
+
+        // Event listeners for cleaning forms
+
+        async function applyCleaningAction(form, statusElement, spinnerElement, buttonElement, actionData) {
+            statusElement.textContent = "Applying action...";
+            statusElement.classList.remove('text-danger', 'text-success');
+            buttonElement.disabled = true;
+            spinnerElement.classList.remove('d-none');
+
+            try {
+                const response = await fetch('/apply_cleaning_action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(actionData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    statusElement.textContent = data.message;
+                    statusElement.classList.remove('text-danger');
+                    statusElement.classList.add('text-success');
+                    await updateDataFrameInfo(); // Refresh all column info
+                } else {
+                    statusElement.textContent = `Error: ${data.message}`;
+                    statusElement.classList.remove('text-success');
+                    statusElement.classList.add('text-danger');
+                    appendMessage('ai', `Failed to apply cleaning action: ${data.message}`);
+                }
+            } catch (error) {
+                console.error('Cleaning action error:', error);
+                statusElement.textContent = "An error occurred. Please try again.";
+                statusElement.classList.remove('text-success');
+                statusElement.classList.add('text-danger');
+            } finally {
+                buttonElement.disabled = false;
+                spinnerElement.classList.add('d-none');
+            }
+        }
+
+        // Missing Values Form
+        missingValuesForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const column = mvColumnSelect.value;
+            const method = mvMethodSelect.value;
+            const value = mvValueInput.value;
+
+            if (!column || !method) {
+                mvStatus.textContent = "Please select a column and a method.";
+                mvStatus.classList.add('text-danger');
+                return;
+            }
+            if (method === 'fill_value' && value === '') {
+                mvStatus.textContent = "Please provide a value to fill with.";
+                mvStatus.classList.add('text-danger');
+                return;
+            }
+
+            const actionData = {
+                action_type: "handle_missing_values",
+                column: column,
+                method: method
+            };
+            if (method === 'fill_value') {
+                actionData.value = value;
+            }
+
+            applyCleaningAction(missingValuesForm, mvStatus, mvSpinner, mvApplyButton, actionData);
+        });
+
+        // Data Type Conversion Form
+        dataTypeConversionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const column = dtColumnSelect.value;
+            const targetType = dtTargetTypeSelect.value;
+
+            if (!column || !targetType) {
+                dtStatus.textContent = "Please select a column and a target type.";
+                dtStatus.classList.add('text-danger');
+                return;
+            }
+
+            const actionData = {
+                action_type: "convert_datatype",
+                column: column,
+                target_type: targetType
+            };
+
+            applyCleaningAction(dataTypeConversionForm, dtStatus, dtSpinner, dtApplyButton, actionData);
+        });
+
+        // Duplicate Handling Form
+        duplicatesForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const selectedOptions = Array.from(dupSubsetSelect.selectedOptions).map(option => option.value);
+            const subset = selectedOptions.length > 0 ? selectedOptions : null;
+            const keep = dupKeepSelect.value;
+
+            const actionData = {
+                action_type: "handle_duplicates",
+                subset: subset,
+                keep: keep
+            };
+
+            applyCleaningAction(duplicatesForm, dupStatus, dupSpinner, dupApplyButton, actionData);
+        });
+
+        // Outlier Handling Form
+        outlierForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const column = outlierColumnSelect.value;
+            const method = outlierMethodSelect.value;
+            const capRange = parseFloat(outlierCapRangeInput.value);
+
+            if (!column || !method) {
+                outlierStatus.textContent = "Please select a column and a method.";
+                outlierStatus.classList.add('text-danger');
+                return;
+            }
+            if (isNaN(capRange) || capRange <= 0) {
+                 outlierStatus.textContent = "IQR Multiplier must be a positive number.";
+                 outlierStatus.classList.add('text-danger');
+                 return;
+            }
+
+            // Basic client-side check for numeric type for outlier handling
+            const selectedColOption = outlierColumnSelect.options[outlierColumnSelect.selectedIndex];
+            const dtype = selectedColOption ? selectedColOption.dataset.dtype : '';
+            if (dtype && !dtype.includes('int') && !dtype.includes('float')) {
+                outlierStatus.textContent = "Selected column must be numeric for outlier handling.";
+                outlierStatus.classList.add('text-danger');
+                return;
+            }
+
+
+            const actionData = {
+                action_type: "handle_outliers_iqr",
+                column: column,
+                method: method,
+                cap_range: capRange
+            };
+
+            applyCleaningAction(outlierForm, outlierStatus, outlierSpinner, outlierApplyButton, actionData);
+        });
+
+        // NEW: Download button event listener
+        downloadDataButton.addEventListener('click', async () => {
+            downloadDataButton.disabled = true;
+            downloadSpinner.classList.remove('d-none');
+            downloadStatus.textContent = "Preparing data for download...";
+            downloadStatus.classList.remove('text-danger', 'text-success');
+
+            try {
+                const response = await fetch('/download_data');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'processed_data.csv'; // Hardcoded filename for now
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    downloadStatus.textContent = "Download started!";
+                    downloadStatus.classList.add('text-success');
+                } else {
+                    const errorData = await response.json();
+                    downloadStatus.textContent = `Error: ${errorData.message}`;
+                    downloadStatus.classList.add('text-danger');
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                downloadStatus.textContent = "An error occurred during download.";
+                downloadStatus.classList.add('text-danger');
+            } finally {
+                downloadDataButton.disabled = false;
+                downloadSpinner.classList.add('d-none');
+            }
+        });
+
+
+    </script>
+</body>
+</html>
