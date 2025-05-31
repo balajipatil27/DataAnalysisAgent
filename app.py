@@ -1179,4 +1179,4 @@ def setup_app():
     os.makedirs(app.config['TEMP_DATA_FOLDER'], exist_ok=True)
     
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False, host='0.0.0.0', port=port)
