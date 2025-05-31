@@ -1167,7 +1167,7 @@ def download_data():
 # Cleanup of temp_data folder on app exit or before restart (optional)
 # This will remove all temporary data files when the Flask app starts
 # You might want a more sophisticated cleanup for production (e.g., cron job)
-@app.before_first_request
+
 def setup_app():
     # Clear temp_data folder on startup to ensure fresh state
     if os.path.exists(app.config['TEMP_DATA_FOLDER']):
