@@ -35,14 +35,14 @@ body {
 .user-message {
     background-color: #007bff;
     color: white;
-    margin-left: auto; /* Aligns to right */
+    margin-left: auto; 
     text-align: right;
 }
 
 .ai-message {
     background-color: #6c757d;
     color: white;
-    margin-right: auto; /* Aligns to left */
+    margin-right: auto; 
     text-align: left;
 }
 
@@ -102,7 +102,7 @@ table {
     border-collapse: collapse;
     margin-top: 10px;
     margin-bottom: 10px;
-    background-color: #fff; /* Ensure table background is white */
+    background-color: #fff; 
 }
 th, td {
     border: 1px solid #ddd;
@@ -114,7 +114,6 @@ th {
     background-color: #f2f2f2;
     font-weight: bold;
 }
-/* Hide the custom plot section initially */
 #customPlotSection {
     display: none;
 }
