@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 from tabulate import tabulate
 from flask import Flask, render_template, request, jsonify, send_from_directory, session , send_file
 
-import uuid # For unique filenames
-import shutil # For removing directories
-import time # For performance timing
+import uuid 
+import shutil 
+import time 
 
 # --- Configuration ---
 load_dotenv()
@@ -25,17 +25,15 @@ if not TOGETHER_API_KEY:
     raise ValueError("TOGETHER_API_KEY not found. Please set it in a .env file or as an environment variable.")
 
 TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
-TOGETHER_MODEL = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8" # Using the previous model as requested
+TOGETHER_MODEL = "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8" 
 
-# If Tesseract is not in your PATH, specify its path here.
-# pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe' # Example for Windows
-# pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract' # Example for macOS
+
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24) # Required for session management - CRITICAL for sessions to work
-app.config['UPLOAD_FOLDER'] = 'uploads' # Folder to save initial uploaded files
-app.config['STATIC_PLOT_FOLDER'] = 'static/img' # Folder to save plots
-app.config['TEMP_DATA_FOLDER'] = 'temp_data' # Folder to store temporary DataFrames
+app.secret_key = os.urandom(24) 
+app.config['UPLOAD_FOLDER'] = 'uploads' 
+app.config['STATIC_PLOT_FOLDER'] = 'static/img' 
+app.config['TEMP_DATA_FOLDER'] = 'temp_data' 
 
 # Create directories if they don't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -51,7 +49,7 @@ def get_session_data():
 def set_session_data(data):
     """Sets session-specific data."""
     session['ingested_data'] = data
-    print(f"DEBUG: Session data updated. Type: {data['type']}") # Debugging line
+    print(f"DEBUG: Session data updated. Type: {data['type']}") 
 
 def get_session_history():
     """Retrieves session-specific conversation history."""
@@ -61,8 +59,7 @@ def set_session_history(history):
     """Sets session-specific conversation history."""
     session['conversation_history'] = history
 
-# --- Helper to clean up old temp data files (optional, but good practice) ---
-def clean_old_temp_data(max_age_seconds=3600): # 1 hour
+def clean_old_temp_data(max_age_seconds=3600): 
     now = time.time()
     for filename in os.listdir(app.config['TEMP_DATA_FOLDER']):
         filepath = os.path.join(app.config['TEMP_DATA_FOLDER'], filename)
@@ -119,7 +116,7 @@ def load_xlsx(file_path):
 
         df_temp_filename = f"{uuid.uuid4().hex}.parquet"
         df_temp_filepath = os.path.join(app.config['TEMP_DATA_FOLDER'], df_temp_filename)
-        df.to_parquet(df_temp_filepath) # Save DataFrame as a Parquet file
+        df.to_parquet(df_temp_filepath) 
 
         set_session_data({"content": df_temp_filepath, "type": "dataframe"})
 
@@ -182,7 +179,7 @@ def upload_document(file_path):
     file_extension = os.path.splitext(file_path)[1].lower()
     success = False
     
-    # Start timing for data processing
+
     data_processing_start_time = time.time()
 
     if file_extension == '.txt':
@@ -265,16 +262,16 @@ def get_dataframe_from_session():
         df_temp_filepath = session_data["content"]
         if os.path.exists(df_temp_filepath):
             try:
-                df = pd.read_parquet(df_temp_filepath) # Read from Parquet file
+                df = pd.read_parquet(df_temp_filepath) 
                 print(f"DEBUG: DataFrame successfully re-created from temp file: {df_temp_filepath}. Shape: {df.shape}")
                 return df
             except Exception as e:
                 print(f"ERROR: Failed to read DataFrame from temp file '{df_temp_filepath}': {e}. Session data might be corrupted or file missing.")
-                set_session_data({"content": None, "type": None}) # Clear session if file cannot be read
+                set_session_data({"content": None, "type": None}) 
                 return None
         else:
             print(f"WARNING: DataFrame temp file not found at {df_temp_filepath}. Session is invalid for DataFrame.")
-            set_session_data({"content": None, "type": None}) # Clear session if file is gone
+            set_session_data({"content": None, "type": None})
             return None
     print("DEBUG: No structured data in session (type is not 'dataframe' or content is None).")
     return None
@@ -289,7 +286,7 @@ def save_dataframe_to_session(df):
     df_temp_filepath = session_data.get("content")
     
     if not df_temp_filepath or not os.path.exists(df_temp_filepath):
-        # If no existing file or file is gone, create a new one
+      
         df_temp_filename = f"{uuid.uuid4().hex}.parquet"
         df_temp_filepath = os.path.join(app.config['TEMP_DATA_FOLDER'], df_temp_filename)
         print(f"DEBUG: Creating new temp parquet file: {df_temp_filepath}")
@@ -388,10 +385,10 @@ def filter_data(column, operator, value):
         return f"Column '{column}' not found."
 
     try:
-        # Attempt to cast value to the column's type if possible
+       
         if pd.api.types.is_numeric_dtype(df[column]):
-            value = float(value) # Try float for broader compatibility
-        # For date columns, try to parse
+            value = float(value)
+      
         elif pd.api.types.is_datetime64_any_dtype(df[column]):
             value = pd.to_datetime(value)
 
@@ -419,7 +416,7 @@ def filter_data(column, operator, value):
     except Exception as e:
         return f"Error during filtering: {e}"
 
-# --- NEW: Data Cleaning Functions ---
+# ---Data Cleaning Functions ---
 
 def handle_missing_values(column, method, value=None):
     df = get_dataframe_from_session()
@@ -433,7 +430,7 @@ def handle_missing_values(column, method, value=None):
     missing_before = df.isnull().sum().sum()
 
     try:
-        new_df = df.copy() # Work on a copy
+        new_df = df.copy() 
         
         if method == "drop_row":
             if column == "all_columns":
@@ -443,8 +440,8 @@ def handle_missing_values(column, method, value=None):
             rows_affected = original_rows - len(new_df)
             message = f"Dropped {rows_affected} rows with missing values."
         elif method == "drop_column":
-            if column == "all_columns": # This option is less common for drop_column
-                # Drop columns that have any missing values
+            if column == "all_columns":
+               
                 cols_to_drop = new_df.columns[new_df.isnull().any()].tolist()
                 new_df.dropna(axis=1, inplace=True)
                 message = f"Dropped {len(cols_to_drop)} columns with missing values: {', '.join(cols_to_drop)}"
@@ -464,7 +461,7 @@ def handle_missing_values(column, method, value=None):
             elif method == "median":
                 fill_val = new_df[column].median()
             elif method == "mode":
-                fill_val = new_df[column].mode()[0] # .mode() can return multiple if tied
+                fill_val = new_df[column].mode()[0] 
 
             new_df[column].fillna(fill_val, inplace=True)
             message = f"Filled missing values in '{column}' with its {method} ({fill_val})."
@@ -502,12 +499,11 @@ def convert_datatype(column, target_type):
             new_df[column] = pd.to_datetime(new_df[column], errors='coerce')
         elif target_type == "string":
             new_df[column] = new_df[column].astype(str)
-        elif target_type in ["int", "float"]: # Specific numeric types
+        elif target_type in ["int", "float"]: 
             new_df[column] = pd.to_numeric(new_df[column], errors='coerce').astype(target_type)
         else:
             return {"success": False, "message": f"Unsupported target data type: {target_type}."}
 
-        # Check if conversion introduced NaNs for non-nullable types and report
         if new_df[column].isnull().any() and original_dtype != 'object' and target_type not in ['numeric', 'datetime']:
              return {"success": False, "message": f"Conversion of '{column}' to {target_type} introduced missing values. Original values might not be compatible."}
 
@@ -586,8 +582,6 @@ def generate_plot(plot_type, x_col, y_col=None, hue_col=None, title="Generated P
     df = get_dataframe_from_session()
     if df is None:
         return "No structured data loaded for plotting."
-    # Validate columns only if they are provided and required for the plot type
-    # Some plots (like hist) might only need x_col. Boxplot can take just y_col.
     required_cols = []
     if plot_type in ['line', 'scatter']:
         if not x_col or not y_col:
@@ -598,7 +592,6 @@ def generate_plot(plot_type, x_col, y_col=None, hue_col=None, title="Generated P
             return f"{plot_type} plot requires an X-axis column."
         required_cols = [x_col]
     elif plot_type == 'box':
-        # Box plot needs at least one of x or y
         if not x_col and not y_col:
             return "Box plot requires at least one column (X or Y axis)."
         if x_col and x_col not in df.columns:
@@ -621,7 +614,7 @@ def generate_plot(plot_type, x_col, y_col=None, hue_col=None, title="Generated P
             if y_col:
                 sns.barplot(x=x_col, y=y_col, hue=hue_col, data=df)
                 plt.ylabel(y_col)
-            else: # Count plot for single categorical variable
+            else: 
                 sns.countplot(x=x_col, hue=hue_col, data=df)
                 plt.ylabel("Count")
             plt.xlabel(x_col)
@@ -640,14 +633,14 @@ def generate_plot(plot_type, x_col, y_col=None, hue_col=None, title="Generated P
             plt.xlabel(x_col)
             plt.ylabel("Frequency")
         elif plot_type == 'box':
-            if y_col and x_col: # Both X and Y provided
+            if y_col and x_col: 
                 sns.boxplot(x=x_col, y=y_col, data=df)
                 plt.xlabel(x_col)
                 plt.ylabel(y_col)
-            elif y_col: # Only Y provided, make a single boxplot
+            elif y_col: 
                 sns.boxplot(y=y_col, data=df)
                 plt.ylabel(y_col)
-            elif x_col: # Only X provided, make a single boxplot (assuming X is numeric)
+            elif x_col: 
                 sns.boxplot(y=x_col, data=df)
                 plt.ylabel(x_col)
         else:
@@ -673,7 +666,7 @@ def parse_llm_action(response_text):
     if action_prefix in response_text:
         try:
             action_json_str = response_text.split(action_prefix, 1)[1].strip()
-            # Attempt to find the full JSON block if there's text after it
+           
             if '}' in action_json_str:
                 action_json_str = action_json_str[:action_json_str.rfind('}') + 1]
             else:
@@ -778,7 +771,6 @@ def get_data_context_for_llm():
             schema_str = schema_info.getvalue()
             head_str = tabulate(df.head().astype(str), headers='keys', tablefmt='grid')
 
-            # Add more detail about missing values for LLM
             missing_info = df.isnull().sum()
             missing_cols = missing_info[missing_info > 0]
             missing_summary = ""
@@ -838,11 +830,9 @@ def upload_file():
             print(f"ERROR: Failed to save file {filepath}: {e}")
             return jsonify({"success": False, "message": f"Failed to save file: {e}", "type": None, "columns": []})
 
-        # Clear previous session data and history on new upload
-        # Also clean up old temp data files from previous sessions
         set_session_data({"content": None, "type": None})
         set_session_history([])
-        clean_old_temp_data() # Clean up before potentially creating new temp data
+        clean_old_temp_data() 
         print("DEBUG: Session data and history cleared on new upload. Old temp data cleaned.")
 
 
@@ -852,8 +842,8 @@ def upload_file():
             columns = []
             column_dtypes = []
             if document_type == "dataframe":
-                columns = get_dataframe_columns() # Only get columns if it's a dataframe
-                column_dtypes = get_dataframe_column_dtypes() # Get column names and types
+                columns = get_dataframe_columns()
+                column_dtypes = get_dataframe_column_dtypes() 
 
             print(f"DEBUG: Document processed successfully by upload_document. Final session type: {document_type}, Columns: {columns}")
 
@@ -895,8 +885,8 @@ def upload_file():
                 "message": initial_message,
                 "overview": overview_response,
                 "type": document_type,
-                "columns": columns, # Simple list of names for basic plot/chat UIs
-                "column_dtypes": column_dtypes # Detailed list for cleaning UIs
+                "columns": columns, 
+                "column_dtypes": column_dtypes 
             })
         else:
             print(f"DEBUG: upload_document returned False for {filepath}. Final session type: {get_session_data()['type']}")
@@ -989,14 +979,13 @@ def chat():
     print(f"DEBUG: LLM chat response generation finished in {llm_response_end_time - llm_response_start_time:.2f} seconds.")
 
     display_response_for_history = llm_response_content
-    # Clean up "ACTION:" prefix if it exists before adding to history
     if "ACTION:" in llm_response_content:
         display_response_for_history = llm_response_content.split("ACTION:", 1)[0].strip()
-        if not display_response_for_history: # If only ACTION was present
+        if not display_response_for_history: 
             display_response_for_history = "Executing requested action..."
 
     conversation_history.append({"role": "assistant", "content": display_response_for_history})
-    set_session_history(conversation_history) # Update history after LLM responds
+    set_session_history(conversation_history)
 
     action = parse_llm_action(llm_response_content)
 
@@ -1021,7 +1010,7 @@ def chat():
             f"Explain any limitations or insights clearly. Do not use 'ACTION:' in your response."
             f"Also, confirm the new shape of the DataFrame if it was modified (e.g., 'Now contains X rows and Y columns')."
         )
-        current_messages_for_summary = list(conversation_history) # Copy history to avoid modifying it for this temporary prompt
+        current_messages_for_summary = list(conversation_history)
         current_messages_for_summary.append({"role": "user", "content": summary_prompt})
         
         # Start timing for LLM summary
@@ -1040,7 +1029,7 @@ def chat():
         return jsonify({
             "response": summary_response,
             "plot_url": plot_url,
-            "data_modified": True # Indicate to frontend that data might have changed
+            "data_modified": True 
         })
     else:
         clean_llm_response = llm_response_content.replace("ACTION:", "").strip()
@@ -1100,7 +1089,7 @@ def generate_custom_plot_route():
 @app.route('/apply_cleaning_action', methods=['POST'])
 def apply_cleaning_action_route():
     data = request.json
-    action_type = data.get('action_type') # e.g., "handle_missing_values"
+    action_type = data.get('action_type')
     column = data.get('column')
     method = data.get('method')
     value = data.get('value')
@@ -1150,12 +1139,9 @@ def download_data():
         return jsonify({"success": False, "message": "No data loaded or processed to download."}), 400
 
     try:
-        # Determine filename and format
         filename = f"processed_data_{uuid.uuid4().hex}.csv" # Default to CSV
         file_path = os.path.join(app.config['TEMP_DATA_FOLDER'], filename)
 
-        # You can add logic here to allow choosing CSV or XLSX based on a query parameter
-        # For simplicity, let's just use CSV for now.
         df.to_csv(file_path, index=False)
 
         return send_file(file_path, as_attachment=True, download_name="processed_data.csv", mimetype='text/csv')
@@ -1164,12 +1150,7 @@ def download_data():
         return jsonify({"success": False, "message": f"Error preparing data for download: {e}"}), 500
 
 
-# Cleanup of temp_data folder on app exit or before restart (optional)
-# This will remove all temporary data files when the Flask app starts
-# You might want a more sophisticated cleanup for production (e.g., cron job)
-
 def setup_app():
-    # Clear temp_data folder on startup to ensure fresh state
     if os.path.exists(app.config['TEMP_DATA_FOLDER']):
         try:
             shutil.rmtree(app.config['TEMP_DATA_FOLDER'])
