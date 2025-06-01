@@ -36,9 +36,6 @@ A Flask-based web application that serves as an intelligent data analyst assista
 * **Backend:** Flask (Python)
 * **Data Manipulation:** Pandas
 * **Numerical Operations:** NumPy
-* **Statistical Modeling:**
-    * Scikit-learn (for potential future basic models, though `statsmodels` is used for regression summary here)
-    * Statsmodels (for robust statistical model summaries in regression)
 * **Visualization:** Matplotlib, Seaborn
 * **AI/LLM:** Google Gemini Pro API
 * **Frontend:** HTML, CSS (Bootstrap 5), JavaScript (for AJAX interactions and dynamic UI)
