@@ -1,7 +1,6 @@
 # Data Analyst Agent
 
-A Flask-based web application that serves as an intelligent data analyst assistant. Users can upload various file types (CSV, Excel, text documents), chat with an AI agent to get insights, generate visualizations, perform data cleaning operations, and conduct advanced statistical analyses like correlation and linear regression.
-
+A Flask-based web application that serves as an intelligent data analyst assistant. Users can upload various file types (CSV, Excel, text documents), chat with an AI agent to get insights, generate visualizations, perform data cleaning operations.
 ## Features
 
 * **File Upload:** Upload `CSV`, `XLSX` (Excel), and `TXT` files.
